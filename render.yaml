@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: ai-detector-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python telegram_bot.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        value: 8517343845:AAEK76mr_atyd02micmjJyfKNu3bwr7ZsBI
+      - key: PYTHON_VERSION
+        value: 3.11.0
