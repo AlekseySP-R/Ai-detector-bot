@@ -1,16 +1,2 @@
-# AI Content Detector - Dependencies for Render
-
-# Telegram Bot
 python-telegram-bot==20.7
-
-# Image processing (headless version for cloud)
-opencv-python-headless==4.8.1.78
-Pillow==10.1.0
-numpy==1.24.3
-
-# Audio processing
-librosa==0.10.1
-soundfile==0.12.1
-
-# Additional libraries
-scipy==1.11.4
+python-dotenv
