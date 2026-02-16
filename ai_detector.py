@@ -104,7 +104,7 @@ def format_result(result):
     percent = f"{result['confidence']:.0%}" if result['confidence'] > 0 else "N/A"
     
     return (
-        f"📊 *Результат анализа ({result['type']})*\n\n"
+        f"📊 Результат анализа ({result['type']})\n\n"
         f"Вердикт: {status}\n"
         f"Уверенность: {percent}\n"
         f"Детали: {result['details']}"
