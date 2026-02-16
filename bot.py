@@ -2,7 +2,6 @@ import os
 import logging
 import tempfile
 import threading
-# Эти импорты нужны для "обмана" Render, чтобы он видел порт
 from flask import Flask
 from telegram import Update
 from telegram.ext import (
@@ -14,20 +13,18 @@ from telegram.ext import (
 )
 from ai_detector import AIContentDetector, format_result
 
-# --- Настройка Flask (Веб-сервер) ---
+# --- Flask (для Render) ---
 app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return "Бот успешно запущен и работает!"
+    return "Бот работает!"
 
 def run_flask():
-    # Render ищет открытый порт, Flask его открывает
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
-# ------------------------------------
+# ---------------------------
 
-# Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -40,12 +37,10 @@ class AIDetectorBot:
         self.detector = AIContentDetector()
         self.app = Application.builder().token(token).build()
         
-        # Команды
         self.app.add_handler(CommandHandler("start", self.start_command))
         self.app.add_handler(CommandHandler("help", self.help_command))
         self.app.add_handler(CommandHandler("stats", self.stats_command))
         
-        # Файлы
         self.app.add_handler(MessageHandler(filters.PHOTO, self.handle_photo))
         self.app.add_handler(MessageHandler(filters.Document.IMAGE, self.handle_image_document))
         self.app.add_handler(MessageHandler(filters.VIDEO, self.handle_video))
@@ -56,11 +51,9 @@ class AIDetectorBot:
         self.stats = {"images": 0, "videos": 0, "audio": 0, "total": 0}
     
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        msg = ("🤖 *Детектор AI-контента*\n\n"
-               "Отправьте файл (фото, видео, аудио) для проверки.\n"
-               "/help - помощь\n/stats - статистика")
-        await update.message.reply_text(msg, parse_mode='Markdown')
-    
+        msg = "🤖 *Детектор AI-контента*\n\nОтправьте файл (фото, видео, аудио) для проверки."
+        await update.message.reply_text(msg)
+
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("📚 Пришлите файл, и я проверю его на признаки AI.")
 
@@ -71,22 +64,25 @@ class AIDetectorBot:
                f"📈 Всего: {s['total']}")
         await update.message.reply_text(msg)
 
-    # --- Безопасная обработка файлов ---
     async def _safe_process(self, update, file_obj, ext, media_type, detect_func):
         tmp_path = None
         try:
-            await update.message.reply_text(text)
+            await update.message.reply_text(f"🔍 Анализирую {media_type}...")
             
-            # Создаем временный файл
             with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
                 tmp_path = tmp.name
             
             await file_obj.download_to_drive(tmp_path)
             
+            # Получаем результат
             result = detect_func(tmp_path)
+            
+            # Форматируем ответ (без Markdown, чтобы не было ошибок)
             text = format_result(result)
             
-            await update.message.reply_text(text, parse_mode='Markdown')
+            # Отправляем ответ
+            await update.message.reply_text(text)
+            
             self.stats[media_type] += 1
             self.stats['total'] += 1
 
@@ -94,11 +90,9 @@ class AIDetectorBot:
             logger.error(f"Error: {e}")
             await update.message.reply_text(f"❌ Ошибка: {e}")
         finally:
-            # Гарантированное удаление файла
             if tmp_path and os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
-    # --- Обработчики ---
     async def handle_photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         photo = update.message.photo[-1]
         file = await photo.get_file()
@@ -153,10 +147,8 @@ if __name__ == "__main__":
         print("❌ Нет токена TELEGRAM_BOT_TOKEN!")
         exit(1)
         
-    # 1. Запускаем Flask в отдельном потоке (для Render)
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
     
-    # 2. Запускаем бота
     bot = AIDetectorBot(TOKEN)
     bot.run()
