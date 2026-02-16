@@ -75,7 +75,7 @@ class AIDetectorBot:
     async def _safe_process(self, update, file_obj, ext, media_type, detect_func):
         tmp_path = None
         try:
-            await update.message.reply_text(f"🔍 Анализирую {media_type}...")
+            await update.message.reply_text(text)
             
             # Создаем временный файл
             with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
