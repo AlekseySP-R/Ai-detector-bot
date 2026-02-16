@@ -1,13 +1,33 @@
 import os
 import logging
 import tempfile
+import threading
+# Эти импорты нужны для "обмана" Render, чтобы он видел порт
+from flask import Flask
 from telegram import Update
 from telegram.ext import (
-    Application, CommandHandler, MessageHandler, filters, ContextTypes
+    Application,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    ContextTypes
 )
 from ai_detector import AIContentDetector, format_result
 
-# Логирование
+# --- Настройка Flask (Веб-сервер) ---
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return "Бот успешно запущен и работает!"
+
+def run_flask():
+    # Render ищет открытый порт, Flask его открывает
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+# ------------------------------------
+
+# Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -74,7 +94,7 @@ class AIDetectorBot:
             logger.error(f"Error: {e}")
             await update.message.reply_text(f"❌ Ошибка: {e}")
         finally:
-            # ГАРАНТИРОВАННОЕ удаление файла
+            # Гарантированное удаление файла
             if tmp_path and os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
@@ -130,7 +150,13 @@ class AIDetectorBot:
 if __name__ == "__main__":
     TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
     if not TOKEN:
-        print("❌ Нет токена TELEGRAM_BOT_TOKEN в переменных окружения!")
+        print("❌ Нет токена TELEGRAM_BOT_TOKEN!")
         exit(1)
+        
+    # 1. Запускаем Flask в отдельном потоке (для Render)
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
+    
+    # 2. Запускаем бота
     bot = AIDetectorBot(TOKEN)
     bot.run()
